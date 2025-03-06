@@ -1,4 +1,4 @@
-# LxNodes for n8n
+[# LxNodes for n8n
 
 <div align="center">
   <img src="./logo.svg" alt="LxNodes Premium Web Automation Tools" width="200" />
@@ -154,3 +154,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
+](https://github.com/LXMedia1/LxNodes)
