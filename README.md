@@ -5,10 +5,11 @@
   <h3>Premium Web Automation Nodes for n8n</h3>
 </div>
 
-This repository contains two powerful custom nodes for [n8n](https://n8n.io) that enable advanced web automation and scraping:
+This repository contains powerful custom nodes for [n8n](https://n8n.io) that enable advanced web automation and HTML processing:
 
 - **WebRequest**: Basic headless browser requests with CSS selector support
 - **WebRequestPro**: Premium version with advanced features including JavaScript selectors, authentication, screenshots, and more
+- **LxHTML**: Advanced HTML processing with extraction, generation, transformation, and analysis capabilities
 
 ## Features Overview
 
@@ -25,6 +26,12 @@ This repository contains two powerful custom nodes for [n8n](https://n8n.io) tha
 - **Screenshots**: Capture full-page or visible area screenshots
 - **Custom JavaScript**: Execute scripts on the page for complex interactions
 - **Multiple Selection**: Return all matching elements as an array
+
+### LxHTML (Advanced HTML Processing)
+- **Extract**: Extract content from HTML using CSS selectors, XPath, or Smart selectors
+- **Generate**: Create HTML content using template engines with responsive design support
+- **Transform**: Convert HTML to different formats or optimize existing HTML
+- **Analyze**: Examine HTML structure and quality for SEO, accessibility, and performance
 
 ## Quick Installation
 
@@ -141,10 +148,51 @@ New-Item -ItemType SymbolicLink -Path "$env:USERPROFILE\.n8n\custom\n8n-nodes-lx
 ]
 ```
 
+### HTML Analysis for SEO
+```javascript
+// Example workflow using the LxHTML node for SEO analysis
+[
+  {
+    "name": "Start",
+    "type": "n8n-nodes-base.start",
+    "position": [
+      250,
+      300
+    ]
+  },
+  {
+    "name": "HTTP Request",
+    "type": "n8n-nodes-base.httpRequest",
+    "position": [
+      450,
+      300
+    ],
+    "parameters": {
+      "url": "https://example.com",
+      "method": "GET"
+    }
+  },
+  {
+    "name": "LxHTML",
+    "type": "n8n-nodes-lx.lxHtml",
+    "position": [
+      650,
+      300
+    ],
+    "parameters": {
+      "operation": "analyze",
+      "htmlAnalyze": "={{ $json.data }}",
+      "analysisType": "seo"
+    }
+  }
+]
+```
+
 ## Documentation
 
 - [WebRequest Node](./docs/WebRequest.md)
 - [WebRequestPro Node](./docs/WebRequestPro.md)
+- [LxHTML Node](./docs/LxHTML.md)
 - [Publishing Guide](./docs/PUBLISHING.md)
 
 ## Contributing

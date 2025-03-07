@@ -11,14 +11,15 @@ class WebRequestPro {
         this.description = {
             displayName: 'Web Request Pro',
             name: 'webRequestPro',
-            group: ['input'],
+            icon: 'file:browser.svg',
+            group: ['transform'],
             version: 1,
-            description: 'Makes advanced web requests using a headless browser with premium features',
+            description: 'Advanced web scraping with browser automation',
             defaults: {
                 name: 'Web Request Pro',
             },
-            inputs: ['main'],
-            outputs: ['main'],
+            inputs: ["main"],
+            outputs: ["main"],
             credentials: [
                 {
                     name: 'httpBasicAuth',

@@ -1,8 +1,9 @@
-import type {
+import {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import puppeteer from 'puppeteer';
@@ -11,14 +12,15 @@ export class WebRequest implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Web Request',
 		name: 'webRequest',
-		group: ['input'],
+		icon: 'file:browser.svg',
+		group: ['transform'],
 		version: 1,
-		description: 'Makes a web request using a headless browser',
+		description: 'Make a web request to any URL',
 		defaults: {
 			name: 'Web Request',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'URL',

@@ -5,18 +5,18 @@ const HttpVerbDescription_1 = require("./HttpVerbDescription");
 class HttpBin {
     constructor() {
         this.description = {
-            displayName: 'HttpBin',
+            displayName: 'Http Bin',
             name: 'httpBin',
             icon: 'file:httpbin.svg',
-            group: ['transform'],
+            group: ['output'],
             version: 1,
             subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-            description: 'Interact with HttpBin API',
+            description: 'Make HTTP requests to httpbin.org',
             defaults: {
-                name: 'HttpBin',
+                name: 'Http Bin',
             },
-            inputs: ['main'],
-            outputs: ['main'],
+            inputs: ["main"],
+            outputs: ["main"],
             credentials: [
                 {
                     name: 'httpbinApi',

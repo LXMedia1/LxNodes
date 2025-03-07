@@ -9,7 +9,8 @@
     "web-scraping",
     "automation",
     "screenshot",
-    "javascript-execution"
+    "javascript-execution",
+    "html-processing"
   ],
   "license": "MIT",
   "homepage": "https://github.com/yourusername/n8n-nodes-lx",
@@ -49,7 +50,8 @@
       "dist/nodes/ExampleNode/ExampleNode.node.js",
       "dist/nodes/HttpBin/HttpBin.node.js",
       "dist/nodes/WebRequest/WebRequest.node.js",
-      "dist/nodes/WebRequestPro/WebRequestPro.node.js"
+      "dist/nodes/WebRequestPro/WebRequestPro.node.js",
+      "dist/nodes/LxHTML/LxHTML.node.js"
     ]
   },
   "devDependencies": {
@@ -61,7 +63,8 @@
     "typescript": "^5.5.3"
   },
   "dependencies": {
-    "puppeteer": "^22.0.0"
+    "puppeteer": "^22.0.0",
+    "cheerio": "^1.0.0-rc.12"
   },
   "peerDependencies": {
     "n8n-workflow": "*"

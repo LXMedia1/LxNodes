@@ -1,22 +1,26 @@
 {
-    "name": "n8n-nodes-webrequest",
+    "name": "n8n-nodes-lx",
     "version": "0.1.0",
-    "description": "Custom n8n node for making web requests using a headless browser",
+    "description": "Premium n8n nodes for advanced web scraping and automation",
     "keywords": [
         "n8n-community-node-package",
         "headless",
         "browser",
-        "web-scraping"
+        "web-scraping",
+        "automation",
+        "screenshot",
+        "javascript-execution",
+        "html-processing"
     ],
     "license": "MIT",
-    "homepage": "",
+    "homepage": "https://github.com/yourusername/n8n-nodes-lx",
     "author": {
-        "name": "",
-        "email": ""
+        "name": "LxNodes Team",
+        "email": "contact@example.com"
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/n8n-io/n8n-nodes-webrequest.git"
+        "url": "https://github.com/yourusername/n8n-nodes-lx.git"
     },
     "engines": {
         "node": ">=18.10",
@@ -46,7 +50,8 @@
             "dist/nodes/ExampleNode/ExampleNode.node.js",
             "dist/nodes/HttpBin/HttpBin.node.js",
             "dist/nodes/WebRequest/WebRequest.node.js",
-            "dist/nodes/WebRequestPro/WebRequestPro.node.js"
+            "dist/nodes/WebRequestPro/WebRequestPro.node.js",
+            "dist/nodes/LxHTML/LxHTML.node.js"
         ]
     },
     "devDependencies": {
@@ -58,7 +63,8 @@
         "typescript": "^5.5.3"
     },
     "dependencies": {
-        "puppeteer": "^22.0.0"
+        "puppeteer": "^22.0.0",
+        "cheerio": "^1.0.0-rc.12"
     },
     "peerDependencies": {
         "n8n-workflow": "*"

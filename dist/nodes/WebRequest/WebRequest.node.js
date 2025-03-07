@@ -11,14 +11,15 @@ class WebRequest {
         this.description = {
             displayName: 'Web Request',
             name: 'webRequest',
-            group: ['input'],
+            icon: 'file:browser.svg',
+            group: ['transform'],
             version: 1,
-            description: 'Makes a web request using a headless browser',
+            description: 'Make a web request to any URL',
             defaults: {
                 name: 'Web Request',
             },
-            inputs: ['main'],
-            outputs: ['main'],
+            inputs: ["main"],
+            outputs: ["main"],
             properties: [
                 {
                     displayName: 'URL',
