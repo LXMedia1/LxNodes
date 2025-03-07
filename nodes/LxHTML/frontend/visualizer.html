@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Visualizer</title>
+    <style>
+        :root {
+            --primary-color: #ff6d5a;
+            --secondary-color: #546e7a;
+            --background-color: #f5f5f5;
+            --border-color: #e0e0e0;
+            --highlight-color: #ffec99;
+            --text-color: #333;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 120px);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .panel {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+            position: relative;
+        }
+
+        .panel-code {
+            border-right: 1px solid var(--border-color);
+            background-color: #f8f9fa;
+        }
+
+        .panel-preview {
+            background-color: white;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            margin-bottom: 20px;
+        }
+
+        .button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        .button:hover {
+            background-color: #ff5546;
+        }
+
+        .button.secondary {
+            background-color: var(--secondary-color);
+        }
+
+        .button.secondary:hover {
+            background-color: #455a64;
+        }
+
+        #html-editor {
+            width: 100%;
+            height: calc(100% - 50px);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+        }
+
+        #preview-container {
+            width: 100%;
+            height: 100%;
+            border: none;
+            overflow: auto;
+        }
+
+        .selector-list {
+            margin-top: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .selector-list-header {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 10px;
+        }
+
+        .selector-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .selector-item:hover {
+            background-color: var(--highlight-color);
+        }
+
+        .selector-item:last-child {
+            border-bottom: none;
+        }
+
+        .selector-text {
+            font-size: 14px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .selector-copy {
+            background-color: transparent;
+            border: none;
+            color: var(--secondary-color);
+            cursor: pointer;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .selector-copy:hover {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .highlight {
+            background-color: var(--highlight-color);
+        }
+
+        .message {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: var(--secondary-color);
+            color: white;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+
+        .message.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <h2>HTML Visualizer & CSS Selector Tool</h2>
+        <div>
+            <button id="analyze-button" class="button">Analyze Structure</button>
+            <button id="select-mode-button" class="button secondary">Pick Selector</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="panel panel-code">
+            <textarea id="html-editor" placeholder="Paste your HTML here..."></textarea>
+        </div>
+        <div class="panel panel-preview">
+            <iframe id="preview-container" sandbox="allow-same-origin"></iframe>
+        </div>
+    </div>
+
+    <div id="selector-output" class="selector-list" style="display: none;">
+        <div class="selector-list-header">
+            <h3>Available Selectors</h3>
+        </div>
+        <div id="selector-items">
+            <!-- Selector items will be added here -->
+        </div>
+    </div>
+
+    <div id="message" class="message">Selector copied to clipboard!</div>
+
+    <script>
+        // DOM Elements
+        const htmlEditor = document.getElementById('html-editor');
+        const previewContainer = document.getElementById('preview-container');
+        const analyzeButton = document.getElementById('analyze-button');
+        const selectModeButton = document.getElementById('select-mode-button');
+        const selectorOutput = document.getElementById('selector-output');
+        const selectorItems = document.getElementById('selector-items');
+        const message = document.getElementById('message');
+
+        // State
+        let selectMode = false;
+        let selectedElement = null;
+        let documentObserver = null;
+
+        // Initialize
+        htmlEditor.addEventListener('input', updatePreview);
+        analyzeButton.addEventListener('click', analyzeHTML);
+        selectModeButton.addEventListener('click', toggleSelectMode);
+
+        // Functions
+        function updatePreview() {
+            const html = htmlEditor.value;
+            const iframe = previewContainer;
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            
+            // Write content to iframe
+            iframeDoc.open();
+            iframeDoc.write(html);
+            iframeDoc.close();
+            
+            // If in select mode, add event listeners to elements
+            if (selectMode) {
+                setupSelectMode();
+            }
+        }
+
+        function analyzeHTML() {
+            const iframe = previewContainer;
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            const allElements = iframeDoc.querySelectorAll('*');
+            
+            // Clear previous selectors
+            selectorItems.innerHTML = '';
+            
+            // Common selectors to analyze
+            const selectorTypes = [
+                { name: 'Headings', selector: 'h1, h2, h3, h4, h5, h6' },
+                { name: 'Links', selector: 'a' },
+                { name: 'Images', selector: 'img' },
+                { name: 'Lists', selector: 'ul, ol' },
+                { name: 'Tables', selector: 'table' },
+                { name: 'Forms', selector: 'form' },
+                { name: 'Inputs', selector: 'input, textarea, select' },
+                { name: 'Buttons', selector: 'button' },
+                { name: 'Divs with IDs', selector: 'div[id]' },
+                { name: 'Elements with Classes', selector: '[class]' }
+            ];
+            
+            selectorTypes.forEach(type => {
+                const elements = iframeDoc.querySelectorAll(type.selector);
+                if (elements.length > 0) {
+                    addSelectorItem(`${type.name} (${elements.length})`, type.selector);
+                }
+            });
+            
+            // Show unique IDs
+            const elementsWithIds = iframeDoc.querySelectorAll('[id]');
+            Array.from(elementsWithIds).forEach(el => {
+                const id = el.id;
+                if (id) {
+                    addSelectorItem(`#${id} (${el.tagName.toLowerCase()})`, `#${id}`);
+                }
+            });
+            
+            // Show selector output
+            selectorOutput.style.display = 'block';
+        }
+
+        function addSelectorItem(text, selector) {
+            const item = document.createElement('div');
+            item.className = 'selector-item';
+            
+            const selectorText = document.createElement('span');
+            selectorText.className = 'selector-text';
+            selectorText.textContent = selector;
+            
+            const copyButton = document.createElement('button');
+            copyButton.className = 'selector-copy';
+            copyButton.textContent = 'Copy';
+            copyButton.addEventListener('click', () => {
+                copyToClipboard(selector);
+                showMessage('Selector copied to clipboard!');
+            });
+            
+            item.appendChild(selectorText);
+            item.appendChild(copyButton);
+            item.addEventListener('click', () => {
+                highlightElements(selector);
+            });
+            
+            selectorItems.appendChild(item);
+        }
+
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+
+        function showMessage(text) {
+            message.textContent = text;
+            message.classList.add('visible');
+            setTimeout(() => {
+                message.classList.remove('visible');
+            }, 2000);
+        }
+
+        function highlightElements(selector) {
+            const iframe = previewContainer;
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            
+            // Remove previous highlights
+            const highlighted = iframeDoc.querySelectorAll('.highlight-element');
+            highlighted.forEach(el => {
+                el.classList.remove('highlight-element');
+                el.style.outline = '';
+                el.style.backgroundColor = '';
+            });
+            
+            // Add new highlights
+            const selected = iframeDoc.querySelectorAll(selector);
+            selected.forEach(el => {
+                el.classList.add('highlight-element');
+                el.style.outline = '2px solid #ff6d5a';
+                el.style.backgroundColor = 'rgba(255, 236, 153, 0.3)';
+            });
+        }
+
+        function toggleSelectMode() {
+            selectMode = !selectMode;
+            
+            if (selectMode) {
+                selectModeButton.textContent = 'Exit Picker Mode';
+                selectModeButton.classList.add('secondary');
+                setupSelectMode();
+                showMessage('Click on any element in the preview to get its selector');
+            } else {
+                selectModeButton.textContent = 'Pick Selector';
+                selectModeButton.classList.remove('secondary');
+                teardownSelectMode();
+            }
+        }
+
+        function setupSelectMode() {
+            const iframe = previewContainer;
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            
+            // Add listener to all elements
+            const allElements = iframeDoc.querySelectorAll('*');
+            allElements.forEach(el => {
+                el.addEventListener('mouseover', handleMouseOver);
+                el.addEventListener('mouseout', handleMouseOut);
+                el.addEventListener('click', handleClick);
+                el.style.cursor = 'pointer';
+            });
+            
+            // Add styles to iframe
+            if (!iframeDoc.getElementById('selector-styles')) {
+                const style = iframeDoc.createElement('style');
+                style.id = 'selector-styles';
+                style.textContent = `
+                    .hover-highlight {
+                        outline: 2px dashed #ff6d5a !important;
+                    }
+                    .select-highlight {
+                        outline: 2px solid #ff6d5a !important;
+                        background-color: rgba(255, 236, 153, 0.3) !important;
+                    }
+                `;
+                iframeDoc.head.appendChild(style);
+            }
+            
+            // Setup observer for dynamic content
+            if (!documentObserver) {
+                documentObserver = new MutationObserver(mutations => {
+                    if (selectMode) {
+                        setupSelectMode();
+                    }
+                });
+                
+                documentObserver.observe(iframeDoc, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+        }
+
+        function teardownSelectMode() {
+            const iframe = previewContainer;
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            
+            // Remove event listeners
+            const allElements = iframeDoc.querySelectorAll('*');
+            allElements.forEach(el => {
+                el.removeEventListener('mouseover', handleMouseOver);
+                el.removeEventListener('mouseout', handleMouseOut);
+                el.removeEventListener('click', handleClick);
+                el.style.cursor = '';
+                el.classList.remove('hover-highlight');
+                el.classList.remove('select-highlight');
+            });
+            
+            // Remove styles
+            const selectorStyles = iframeDoc.getElementById('selector-styles');
+            if (selectorStyles) {
+                selectorStyles.remove();
+            }
+            
+            // Disconnect observer
+            if (documentObserver) {
+                documentObserver.disconnect();
+                documentObserver = null;
+            }
+        }
+
+        function handleMouseOver(event) {
+            event.stopPropagation();
+            this.classList.add('hover-highlight');
+        }
+
+        function handleMouseOut(event) {
+            event.stopPropagation();
+            this.classList.remove('hover-highlight');
+        }
+
+        function handleClick(event) {
+            event.stopPropagation();
+            event.preventDefault();
+            
+            const iframe = previewContainer;
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            
+            // Clear previous selection
+            const selected = iframeDoc.querySelectorAll('.select-highlight');
+            selected.forEach(el => el.classList.remove('select-highlight'));
+            
+            // Highlight selected element
+            this.classList.add('select-highlight');
+            selectedElement = this;
+            
+            // Generate optimized selector
+            const selector = generateSelector(this);
+            
+            // Add to selector list
+            selectorOutput.style.display = 'block';
+            // Clear previous selectors
+            selectorItems.innerHTML = '';
+            
+            // Add the selected element's different selectors
+            addSelectorItem('Optimized Selector', selector);
+            
+            if (this.id) {
+                addSelectorItem('ID Selector', `#${this.id}`);
+            }
+            
+            if (this.className) {
+                const classes = Array.from(this.classList).map(c => `.${c}`).join('');
+                addSelectorItem('Class Selector', classes);
+            }
+            
+            // Add tag selector
+            addSelectorItem('Tag Selector', this.tagName.toLowerCase());
+            
+            // Add attributes selectors
+            Array.from(this.attributes).forEach(attr => {
+                if (attr.name !== 'id' && attr.name !== 'class') {
+                    addSelectorItem(`Attribute [${attr.name}]`, `[${attr.name}="${attr.value}"]`);
+                }
+            });
+            
+            // Nth-child selector
+            const nthChild = getNthChildSelector(this);
+            addSelectorItem('Nth-child Selector', nthChild);
+        }
+
+        function generateSelector(element) {
+            // Try ID first
+            if (element.id) {
+                return `#${element.id}`;
+            }
+            
+            // Try unique class combination
+            if (element.className) {
+                const classes = Array.from(element.classList);
+                if (classes.length > 0) {
+                    const classSelector = classes.map(c => `.${c}`).join('');
+                    const iframe = previewContainer;
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc.querySelectorAll(classSelector).length === 1) {
+                        return classSelector;
+                    }
+                }
+            }
+            
+            // Use tag with classes
+            if (element.className) {
+                const tagWithClasses = `${element.tagName.toLowerCase()}${Array.from(element.classList).map(c => `.${c}`).join('')}`;
+                return tagWithClasses;
+            }
+            
+            // Use parent-child relationship
+            let current = element;
+            let selector = element.tagName.toLowerCase();
+            
+            // Go up to 3 levels of parents
+            for (let i = 0; i < 3; i++) {
+                if (!current.parentElement) break;
+                
+                current = current.parentElement;
+                let parentSelector = current.tagName.toLowerCase();
+                
+                if (current.id) {
+                    parentSelector = `#${current.id}`;
+                    selector = `${parentSelector} > ${selector}`;
+                    break;
+                } else if (current.className) {
+                    const classes = Array.from(current.classList);
+                    if (classes.length > 0) {
+                        parentSelector += classes.map(c => `.${c}`).join('');
+                    }
+                }
+                
+                selector = `${parentSelector} > ${selector}`;
+            }
+            
+            return selector;
+        }
+
+        function getNthChildSelector(element) {
+            let current = element;
+            let selector = '';
+            
+            while (current.parentElement) {
+                const parent = current.parentElement;
+                const children = Array.from(parent.children);
+                const index = children.indexOf(current) + 1;
+                
+                const tag = current.tagName.toLowerCase();
+                selector = selector ? `${tag}:nth-child(${index}) > ${selector}` : `${tag}:nth-child(${index})`;
+                
+                current = parent;
+                
+                // Stop at body
+                if (current.tagName.toLowerCase() === 'body') {
+                    selector = `body > ${selector}`;
+                    break;
+                }
+            }
+            
+            return selector;
+        }
+
+        // Initialize with sample HTML if needed
+        function loadSampleHTML() {
+            const sampleHTML = `<!DOCTYPE html>
+<html>
+<head>
+    <title>Sample Page</title>
+    <style>
+        .container { padding: 20px; }
+        .header { background-color: #f0f0f0; padding: 10px; }
+        .content { margin: 20px 0; }
+        .item { border: 1px solid #ddd; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="main-title">Sample Page</h1>
+            <nav>
+                <ul>
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#">About</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="content">
+            <p>This is a sample page to demonstrate the HTML Visualizer.</p>
+            <div class="item" id="item1">
+                <h2>Item 1</h2>
+                <p>Description for item 1</p>
+                <img src="https://via.placeholder.com/150" alt="Placeholder">
+            </div>
+            <div class="item" id="item2">
+                <h2>Item 2</h2>
+                <p>Description for item 2</p>
+                <button type="button">Click Me</button>
+            </div>
+        </div>
+        <form>
+            <div>
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name">
+            </div>
+            <div>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email">
+            </div>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+</body>
+</html>`;
+            
+            htmlEditor.value = sampleHTML;
+            updatePreview();
+        }
+
+        // Load sample HTML when page loads
+        window.addEventListener('load', loadSampleHTML);
+    </script>
+</body>
+</html> 

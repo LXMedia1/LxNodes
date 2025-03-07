@@ -7,6 +7,8 @@ import {
   NodeOperationError,
 } from 'n8n-workflow';
 import * as cheerio from 'cheerio';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Helper functions
 async function extractHtml(executeFunctions: IExecuteFunctions, itemIndex: number): Promise<INodeExecutionData[]> {
@@ -1315,6 +1317,11 @@ export class LxHTML implements INodeType {
             value: 'analyze',
             description: 'Analyze HTML content',
           },
+          {
+            name: 'Visualize',
+            value: 'visualize',
+            description: 'Visualize HTML and pick CSS selectors',
+          },
         ],
         default: 'extract',
         description: 'The operation to perform',
@@ -1823,6 +1830,136 @@ export class LxHTML implements INodeType {
         default: 'seo',
         description: 'The type of analysis to perform',
       },
+
+      // Visualize operation parameters
+      {
+        displayName: 'HTML',
+        name: 'html',
+        type: 'string',
+        displayOptions: {
+          show: {
+            operation: ['visualize'],
+          },
+        },
+        default: '',
+        description: 'The HTML content to visualize',
+        typeOptions: {
+          rows: 10,
+        },
+      },
+      {
+        displayName: 'Visualizer',
+        name: 'visualizer',
+        type: 'notice',
+        displayOptions: {
+          show: {
+            operation: ['visualize'],
+          },
+        },
+        default: `
+          <div style="background-color: #f5f5f5; padding: 10px; border-radius: 4px;">
+            <p>The HTML Visualizer tool provides an interactive interface to:</p>
+            <ul style="padding-left: 20px; margin: 10px 0;">
+              <li>Visualize your HTML content with a live preview</li>
+              <li>Use a CSS Selector Picker to point-and-click on elements</li>
+              <li>Generate optimized CSS selectors for extraction</li>
+              <li>Analyze the HTML structure</li>
+            </ul>
+            <p><strong>Use the button below to open the HTML Visualizer in a new tab.</strong></p>
+          </div>
+        `,
+      },
+      {
+        displayName: 'Open HTML Visualizer',
+        name: 'openVisualizer',
+        type: 'button',
+        displayOptions: {
+          show: {
+            operation: ['visualize'],
+          },
+        },
+        default: '',
+        description: 'Opens the HTML Visualizer Tool in a new tab',
+        typeOptions: {
+          // This doesn't actually do anything in n8n for buttons
+          // But it gives the appearance of a button in the UI
+          color: '#ff6d5a',
+          width: '100%',
+          padding: '12px',
+        },
+      },
+      {
+        displayName: 'Selected Selector',
+        name: 'selectedSelector',
+        type: 'string',
+        displayOptions: {
+          show: {
+            operation: ['visualize'],
+          },
+        },
+        default: '',
+        description: 'The CSS selector picked from the visualizer',
+        typeOptions: {
+          disabled: true,
+        },
+      },
+      {
+        displayName: 'Selector Type',
+        name: 'selectorType',
+        type: 'options',
+        displayOptions: {
+          show: {
+            operation: ['visualize'],
+          },
+        },
+        options: [
+          {
+            name: 'Optimized Selector',
+            value: 'optimized',
+          },
+          {
+            name: 'ID Selector',
+            value: 'id',
+          },
+          {
+            name: 'Class Selector',
+            value: 'class',
+          },
+          {
+            name: 'Tag Selector',
+            value: 'tag',
+          },
+          {
+            name: 'Nth-child Selector',
+            value: 'nthChild',
+          },
+        ],
+        default: 'optimized',
+        description: 'The type of selector to use for extraction',
+      },
+      {
+        displayName: 'HTML Visualizer Instructions',
+        name: 'visualizerInstructions',
+        type: 'notice',
+        displayOptions: {
+          show: {
+            operation: ['visualize'],
+          },
+        },
+        default: `
+          <div style="background-color: #f8f8f8; padding: 10px; border-radius: 4px; margin-top: 20px;">
+            <p><strong>How to use the HTML Visualizer:</strong></p>
+            <ol style="padding-left: 20px; margin: 10px 0;">
+              <li>Enter your HTML content in the field above</li>
+              <li>Click the "Open HTML Visualizer" button</li>
+              <li>In the visualizer, use the "Pick Selector" button to enable selector picking</li>
+              <li>Click on elements in the preview to generate selectors</li>
+              <li>Copy your preferred selector and paste it back in this node</li>
+              <li>Use the selected selector in the Extract operation</li>
+            </ol>
+          </div>
+        `,
+      },
     ],
   };
 
@@ -1847,6 +1984,63 @@ export class LxHTML implements INodeType {
               break;
             case 'analyze':
               returnData.push(...await analyzeHtml(this, i));
+              break;
+            case 'visualize':
+              // When using the visualize operation, we just pass the HTML through
+              // The actual visualization happens in the UI via the frontend HTML file
+              const html = this.getNodeParameter('html', i) as string;
+              const selectedSelector = this.getNodeParameter('selectedSelector', i, '') as string;
+              
+              // Check if the openVisualizer button was clicked
+              const openVisualizer = this.getNodeParameter('openVisualizer', i, false);
+              
+              if (openVisualizer) {
+                // Get the path to the visualizer HTML file
+                const visualizerPath = path.join(__dirname, 'frontend', 'visualizer.html');
+                
+                // Check if the file exists
+                if (fs.existsSync(visualizerPath)) {
+                  // Read the visualizer file
+                  const visualizerHtml = fs.readFileSync(visualizerPath, 'utf-8');
+                  
+                  // Create a temporary HTML file with the user's HTML pre-filled
+                  const tempPath = path.join(__dirname, 'temp_visualizer.html');
+                  
+                  // Replace the placeholder in the visualizer with the user's HTML
+                  let modifiedVisualizer = visualizerHtml;
+                  
+                  // Write the modified visualizer to the temp file
+                  fs.writeFileSync(tempPath, modifiedVisualizer);
+                  
+                  // Provide the path to the temp file for the user to open
+                  returnData.push({
+                    json: {
+                      html,
+                      selectedSelector,
+                      visualizerPath: tempPath,
+                      note: 'The HTML Visualizer has been prepared. Please open the file at the path above to use the visualizer.'
+                    },
+                  });
+                } else {
+                  // If the visualizer file doesn't exist, fallback to basic functionality
+                  returnData.push({
+                    json: {
+                      html,
+                      selectedSelector,
+                      error: 'HTML Visualizer file not found. Please make sure the frontend/visualizer.html file exists in the node directory.',
+                    },
+                  });
+                }
+              } else {
+                // Normal operation if the button wasn't clicked
+                returnData.push({
+                  json: {
+                    html,
+                    selectedSelector,
+                    note: 'The HTML Visualizer is a tool to help select CSS selectors. Use the Extract operation to actually extract content with the selected selector.'
+                  },
+                });
+              }
               break;
           }
         } catch (error) {

@@ -36,6 +36,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LxHTML = void 0;
 const n8n_workflow_1 = require("n8n-workflow");
 const cheerio = __importStar(require("cheerio"));
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 async function extractHtml(executeFunctions, itemIndex) {
     const html = executeFunctions.getNodeParameter('html', itemIndex);
     const extractionType = executeFunctions.getNodeParameter('extractionType', itemIndex);
@@ -1161,6 +1163,11 @@ class LxHTML {
                             value: 'analyze',
                             description: 'Analyze HTML content',
                         },
+                        {
+                            name: 'Visualize',
+                            value: 'visualize',
+                            description: 'Visualize HTML and pick CSS selectors',
+                        },
                     ],
                     default: 'extract',
                     description: 'The operation to perform',
@@ -1661,6 +1668,132 @@ class LxHTML {
                     default: 'seo',
                     description: 'The type of analysis to perform',
                 },
+                {
+                    displayName: 'HTML',
+                    name: 'html',
+                    type: 'string',
+                    displayOptions: {
+                        show: {
+                            operation: ['visualize'],
+                        },
+                    },
+                    default: '',
+                    description: 'The HTML content to visualize',
+                    typeOptions: {
+                        rows: 10,
+                    },
+                },
+                {
+                    displayName: 'Visualizer',
+                    name: 'visualizer',
+                    type: 'notice',
+                    displayOptions: {
+                        show: {
+                            operation: ['visualize'],
+                        },
+                    },
+                    default: `
+          <div style="background-color: #f5f5f5; padding: 10px; border-radius: 4px;">
+            <p>The HTML Visualizer tool provides an interactive interface to:</p>
+            <ul style="padding-left: 20px; margin: 10px 0;">
+              <li>Visualize your HTML content with a live preview</li>
+              <li>Use a CSS Selector Picker to point-and-click on elements</li>
+              <li>Generate optimized CSS selectors for extraction</li>
+              <li>Analyze the HTML structure</li>
+            </ul>
+            <p><strong>Use the button below to open the HTML Visualizer in a new tab.</strong></p>
+          </div>
+        `,
+                },
+                {
+                    displayName: 'Open HTML Visualizer',
+                    name: 'openVisualizer',
+                    type: 'button',
+                    displayOptions: {
+                        show: {
+                            operation: ['visualize'],
+                        },
+                    },
+                    default: '',
+                    description: 'Opens the HTML Visualizer Tool in a new tab',
+                    typeOptions: {
+                        color: '#ff6d5a',
+                        width: '100%',
+                        padding: '12px',
+                    },
+                },
+                {
+                    displayName: 'Selected Selector',
+                    name: 'selectedSelector',
+                    type: 'string',
+                    displayOptions: {
+                        show: {
+                            operation: ['visualize'],
+                        },
+                    },
+                    default: '',
+                    description: 'The CSS selector picked from the visualizer',
+                    typeOptions: {
+                        disabled: true,
+                    },
+                },
+                {
+                    displayName: 'Selector Type',
+                    name: 'selectorType',
+                    type: 'options',
+                    displayOptions: {
+                        show: {
+                            operation: ['visualize'],
+                        },
+                    },
+                    options: [
+                        {
+                            name: 'Optimized Selector',
+                            value: 'optimized',
+                        },
+                        {
+                            name: 'ID Selector',
+                            value: 'id',
+                        },
+                        {
+                            name: 'Class Selector',
+                            value: 'class',
+                        },
+                        {
+                            name: 'Tag Selector',
+                            value: 'tag',
+                        },
+                        {
+                            name: 'Nth-child Selector',
+                            value: 'nthChild',
+                        },
+                    ],
+                    default: 'optimized',
+                    description: 'The type of selector to use for extraction',
+                },
+                {
+                    displayName: 'HTML Visualizer Instructions',
+                    name: 'visualizerInstructions',
+                    type: 'notice',
+                    displayOptions: {
+                        show: {
+                            operation: ['visualize'],
+                        },
+                    },
+                    default: `
+          <div style="background-color: #f8f8f8; padding: 10px; border-radius: 4px; margin-top: 20px;">
+            <p><strong>How to use the HTML Visualizer:</strong></p>
+            <ol style="padding-left: 20px; margin: 10px 0;">
+              <li>Enter your HTML content in the field above</li>
+              <li>Click the "Open HTML Visualizer" button</li>
+              <li>In the visualizer, use the "Pick Selector" button to enable selector picking</li>
+              <li>Click on elements in the preview to generate selectors</li>
+              <li>Copy your preferred selector and paste it back in this node</li>
+              <li>Use the selected selector in the Extract operation</li>
+            </ol>
+          </div>
+        `,
+                },
             ],
         };
     }
@@ -1683,6 +1816,46 @@ class LxHTML {
                             break;
                         case 'analyze':
                             returnData.push(...await analyzeHtml(this, i));
+                            break;
+                        case 'visualize':
+                            const html = this.getNodeParameter('html', i);
+                            const selectedSelector = this.getNodeParameter('selectedSelector', i, '');
+                            const openVisualizer = this.getNodeParameter('openVisualizer', i, false);
+                            if (openVisualizer) {
+                                const visualizerPath = path.join(__dirname, 'frontend', 'visualizer.html');
+                                if (fs.existsSync(visualizerPath)) {
+                                    const visualizerHtml = fs.readFileSync(visualizerPath, 'utf-8');
+                                    const tempPath = path.join(__dirname, 'temp_visualizer.html');
+                                    let modifiedVisualizer = visualizerHtml;
+                                    fs.writeFileSync(tempPath, modifiedVisualizer);
+                                    returnData.push({
+                                        json: {
+                                            html,
+                                            selectedSelector,
+                                            visualizerPath: tempPath,
+                                            note: 'The HTML Visualizer has been prepared. Please open the file at the path above to use the visualizer.'
+                                        },
+                                    });
+                                }
+                                else {
+                                    returnData.push({
+                                        json: {
+                                            html,
+                                            selectedSelector,
+                                            error: 'HTML Visualizer file not found. Please make sure the frontend/visualizer.html file exists in the node directory.',
+                                        },
+                                    });
+                                }
+                            }
+                            else {
+                                returnData.push({
+                                    json: {
+                                        html,
+                                        selectedSelector,
+                                        note: 'The HTML Visualizer is a tool to help select CSS selectors. Use the Extract operation to actually extract content with the selected selector.'
+                                    },
+                                });
+                            }
                             break;
                     }
                 }
